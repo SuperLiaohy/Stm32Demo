@@ -12,8 +12,6 @@ extern "C" {
 
 #include "App.hpp"
 
-#include <cstring>
-
 #include "Format.h"
 #include "Logger.h"
 #include "stm32/Delay.hpp"
@@ -28,13 +26,12 @@ volatile bool gyroDataReady = false;
 bool appReady = false;
 
 Spi imuSpi{&hspi2};
-Delay imuDelay{};
 Gpio accelCs{BMI088_CS1_GPIO_Port, BMI088_CS1_Pin};
 Gpio gyroCs{BMI088_CS2_GPIO_Port, BMI088_CS2_Pin};
 Exti accelExti{BMI088_INT1_Pin};
 Exti gyroExti{BMI088_INT3_Pin};
 
-EP::Driver::Bmi088<Spi, Gpio, Gpio, Delay> imu{imuSpi, accelCs, gyroCs, imuDelay};
+EP::Driver::Bmi088<Spi, Gpio, Gpio, Delay> imu{imuSpi, accelCs, gyroCs};
 
 EP::Driver::Bmi088Data accelData{};
 EP::Driver::Bmi088Data gyroData{};

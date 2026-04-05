@@ -54,10 +54,6 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 # Add sources to executable
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user sources here
-        ../../UserSDK/bsp/stm32/Delay.cpp
-        ../../UserSDK/bsp/stm32/Spi.cpp
-        ../../UserSDK/bsp/stm32/Gpio.cpp
-        ../../UserSDK/bsp/stm32/Exti.cpp
         User/App.cpp
         User/Entry.cpp
 )
@@ -81,9 +77,11 @@ target_compile_options(${CMAKE_PROJECT_NAME} PRIVATE
 # Remove wrong libob.a library dependency when using cpp files
 list(REMOVE_ITEM CMAKE_C_IMPLICIT_LINK_LIBRARIES ob)
 
+
+target_link_libraries(ExRobotSDK stm32cubemx)
+
 # Add linked libraries
 target_link_libraries(${CMAKE_PROJECT_NAME}
-    stm32cubemx
         ExRobotSDK
     # Add user defined libraries
 )
