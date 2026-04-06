@@ -3,8 +3,6 @@ extern "C" {
 #endif
 
 #include "spi.h"
-#include "usbd_cdc_if.h"
-#include "usbd_def.h"
 
 #ifdef __cplusplus
 }
@@ -14,10 +12,12 @@ extern "C" {
 
 #include "Format.h"
 #include "Logger.h"
+#include "UsbCdcLogger.hpp"
 #include "stm32/Delay.hpp"
 #include "stm32/Exti.hpp"
 #include "stm32/Gpio.hpp"
 #include "stm32/Spi.hpp"
+#include "stm32/USBCDC.hpp"
 #include "bmi088/Bmi088.hpp"
 
 namespace {
@@ -31,43 +31,18 @@ Gpio gyroCs{BMI088_CS2_GPIO_Port, BMI088_CS2_Pin};
 Exti accelExti{BMI088_INT1_Pin};
 Exti gyroExti{BMI088_INT3_Pin};
 
-EP::Driver::Bmi088<Spi, Gpio, Gpio, Delay> imu{imuSpi, accelCs, gyroCs};
+EP::Driver::Bmi088<Spi, Gpio, Gpio, Delay, Exti> imu{imuSpi, accelCs, gyroCs};
+USBCDC usbCdc{reinterpret_cast<void*>(1)};
 
 EP::Driver::Bmi088Data accelData{};
 EP::Driver::Bmi088Data gyroData{};
 bool accelDataValid = false;
 bool gyroDataValid = false;
 
-char txPendingBuffer[160]{};
-uint16_t txPendingLength = 0U;
-
-void cdcPrint(uint8_t* data, size_t len) {
-    if ((data == nullptr) || (len == 0U) || (len > sizeof(txPendingBuffer)) || (txPendingLength != 0U)) {
-        return;
-    }
-
-    std::memcpy(txPendingBuffer, data, len);
-    txPendingLength = static_cast<uint16_t>(len);
-}
-
-EP::Component::Logger<cdcPrint> logger{};
-
-void serviceCdcTx() noexcept {
-    if (txPendingLength == 0U) { return; }
-
-    const uint8_t txStatus = CDC_Transmit_HS(reinterpret_cast<uint8_t*>(txPendingBuffer), txPendingLength);
-    if (txStatus == USBD_OK) {
-        txPendingLength = 0U;
-        return;
-    }
-
-    if (txStatus != USBD_BUSY) {
-        txPendingLength = 0U;
-    }
-}
+EP::Component::Logger<EP::Driver::UsbCdcLogger::print> logger{};
 
 void logImuSample() noexcept {
-    if ((txPendingLength != 0U) || !accelDataValid || !gyroDataValid) { return; }
+    if (!accelDataValid || !gyroDataValid) { return; }
 
     logger.log<EP::Component::Str{"BMI088,A,{.3},{.3},{.3},G,{.3},{.3},{.3}\r\n"}>(
         accelData.x,
@@ -94,15 +69,20 @@ bool checkOk(const BspStatus status) noexcept {
 }
 
 void appInit() noexcept {
+
+    EP::Driver::UsbCdcLogger::bind(usbCdc);
+
     accelDataReady = false;
     gyroDataReady = false;
     accelDataValid = false;
     gyroDataValid = false;
-    txPendingLength = 0U;
     appReady = false;
 
     if (!checkOk(accelExti.registerCallback(onAccelDrdy, nullptr))) { return; }
     if (!checkOk(gyroExti.registerCallback(onGyroDrdy, nullptr))) { return; }
+
+    if (!checkOk(usbCdc.init())) { return; }
+    if (!checkOk(EP::Driver::UsbCdcLogger::bind(usbCdc))) { return; }
 
     if (!checkOk(imu.init())) { return; }
     if (!checkOk(imu.configureAccel(EP::Driver::Bmi088AccelConfig{}))) { return; }
@@ -129,8 +109,6 @@ void appInit() noexcept {
 
 void appLoop() noexcept {
     if (!appReady) { return; }
-
-    serviceCdcTx();
 
     bool sampleUpdated = false;
 
