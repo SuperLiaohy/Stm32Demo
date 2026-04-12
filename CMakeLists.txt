@@ -59,6 +59,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user sources here
         User/App.cpp
         User/Entry.cpp
+        User/Imu.cpp
 )
 
 # Add include paths
