@@ -38,6 +38,9 @@ add_executable(${CMAKE_PROJECT_NAME})
 # Add STM32CubeMX generated sources
 add_subdirectory(cmake/stm32cubemx)
 add_subdirectory(${CMAKE_SOURCE_DIR}/../../UserSDK ${CMAKE_BINARY_DIR}/UserSDK)
+set(CMSISCORE ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/CMSIS)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/CMSIS-DSP/Source bin_bsp)
+target_compile_options(CMSISDSP PRIVATE -O3 -ffast-math)
 
 # Suppress vendor CMSIS/HAL unknown optimize attribute warning locally for Stm32Demo.
 # Apply on stm32cubemx interface so generated object-library units inherit it.
@@ -78,7 +81,7 @@ target_compile_options(${CMAKE_PROJECT_NAME} PRIVATE
 list(REMOVE_ITEM CMAKE_C_IMPLICIT_LINK_LIBRARIES ob)
 
 
-target_link_libraries(ExRobotSDK stm32cubemx)
+target_link_libraries(ExRobotSDK stm32cubemx CMSISDSP)
 
 # Add linked libraries
 target_link_libraries(${CMAKE_PROJECT_NAME}

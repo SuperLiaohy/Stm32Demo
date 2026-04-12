@@ -12,7 +12,6 @@ extern "C" {
 
 #include "Format.h"
 #include "Logger.h"
-#include "UsbCdcLogger.hpp"
 #include "stm32/Delay.hpp"
 #include "stm32/Exti.hpp"
 #include "stm32/Gpio.hpp"
@@ -32,14 +31,13 @@ Exti accelExti{BMI088_INT1_Pin};
 Exti gyroExti{BMI088_INT3_Pin};
 
 EP::Driver::Bmi088<Spi, Gpio, Gpio, Delay, Exti> imu{imuSpi, accelCs, gyroCs};
-USBCDC usbCdc{reinterpret_cast<void*>(1)};
 
 EP::Driver::Bmi088Data accelData{};
 EP::Driver::Bmi088Data gyroData{};
 bool accelDataValid = false;
 bool gyroDataValid = false;
 
-EP::Component::Logger<EP::Driver::UsbCdcLogger::print> logger{};
+EP::Component::Logger<CDCPrint> logger{};
 
 void logImuSample() noexcept {
     if (!accelDataValid || !gyroDataValid) { return; }
@@ -70,8 +68,6 @@ bool checkOk(const BspStatus status) noexcept {
 
 void appInit() noexcept {
 
-    EP::Driver::UsbCdcLogger::bind(usbCdc);
-
     accelDataReady = false;
     gyroDataReady = false;
     accelDataValid = false;
@@ -80,9 +76,6 @@ void appInit() noexcept {
 
     if (!checkOk(accelExti.registerCallback(onAccelDrdy, nullptr))) { return; }
     if (!checkOk(gyroExti.registerCallback(onGyroDrdy, nullptr))) { return; }
-
-    if (!checkOk(usbCdc.init())) { return; }
-    if (!checkOk(EP::Driver::UsbCdcLogger::bind(usbCdc))) { return; }
 
     if (!checkOk(imu.init())) { return; }
     if (!checkOk(imu.configureAccel(EP::Driver::Bmi088AccelConfig{}))) { return; }
